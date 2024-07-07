@@ -1,0 +1,5 @@
+{
+  "VARIABLE_1": {"address": 0, "type": "uint16"},
+  "VARIABLE_2": {"address": 100, "type": "uint16"},
+  "VARIABLE_3": {"address": 200, "type": "uint16"}
+}
