@@ -5,6 +5,7 @@ from pymodbus.datastore import ModbusSlaveContext, ModbusSparseDataBlock, Modbus
 from pymodbus.server import ModbusTcpServer as _ModbusTcpServer
 
 from ._auxiliary_functions import is_type
+from .modbus_map_utils import ModbusMapValidator
 
 ModbusMapTypeSingleSlave = dict[str, dict[str, dict[str | int]]]
 ModbusMapTypeMultipleSlaves = dict[int, ModbusMapTypeSingleSlave]
@@ -33,6 +34,7 @@ class ModbusTcpServer:
 
         self.context = self._get_modbus_context()
 
+        self._validator = ModbusMapValidator(self.modbus_map)
         self._register_type_to_function_code = {
             "co": 1,
             "di": 2,
@@ -66,18 +68,29 @@ class ModbusTcpServer:
         self.server = _ModbusTcpServer(self.context, address=(self.host, self.port))
         await self.server.serve_forever()
 
+    def stop(self):
+
+        asyncio.run_coroutine_threadsafe(self.server.shutdown(), self.server.loop)
+
     def get_mb_value_from_address(self, register_type: str, address: int, slave_id: int = 0):
 
         f_code = self._register_type_to_function_code[register_type]
         return self.context[slave_id].getValues(f_code, address, count=1)[0]
 
-    def get_mb_value_from_name(self, mb_variable_name: str, register_type: str, slave_id: int = 0):
+    def get_mb_value(
+            self,
+            mb_variable_name: str,
+            register_type: str,
+            slave_id: int = 0,
+            address: int = None,
+    ):
 
-        mb_variable = self.modbus_map[slave_id][register_type][mb_variable_name]
-        address = mb_variable["address"]
+        if address is None:
 
-        return self.get_mb_value_from_address(register_type, address, slave_id=slave_id)
+            self._validator.check_mb_variable_name(slave_id, register_type, mb_variable_name)
+            mb_variable = self.modbus_map[slave_id][register_type][mb_variable_name]
+            address = address or mb_variable["address"]
 
-    def stop(self):
-
-        asyncio.run_coroutine_threadsafe(self.server.shutdown(), self.server.loop)
+        f_code = self._register_type_to_function_code[register_type]
+        mb_value = self.context[slave_id].getValues(f_code, address, count=1)[0]
+        return mb_value
