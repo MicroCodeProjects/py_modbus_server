@@ -1,0 +1,30 @@
+[build-system]
+requires = ["setuptools"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "py_modbus_server"
+version = "0.1.0rc0"
+authors = [
+  {name = "Andreu", email = ""},
+]
+description = "High level interface for python modbus server"
+readme = "README.md"
+requires-python = ">=3.10"
+dependencies = [
+    "pymodbus >= 3.5.2",
+]
+
+[project.urls]
+homepage = "https://github.com/MicroCodeProjects/py_modbus_server"
+
+[project.optional-dependencies]
+dev = [
+    "allure-pytest>=2.13.5",
+    "pytest-cov>=4.1.0",
+    "pytest-html>=3.2.0",
+    "pytest-html-reporter>=0.2.9",
+    "pytest-metadata>=3.0.0",
+    "pytest-mock>=3.11.1",
+    "pytest>=7.4.0",
+]
