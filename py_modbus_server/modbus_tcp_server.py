@@ -5,10 +5,8 @@ from pymodbus.datastore import ModbusSlaveContext, ModbusSparseDataBlock, Modbus
 from pymodbus.server import ModbusTcpServer as _ModbusTcpServer
 
 from ._auxiliary_functions import is_type
+from ._types import ModbusMapTypeSingleSlave, ModbusMapTypeMultipleSlaves
 from .modbus_map_utils import ModbusMapValidator
-
-ModbusMapTypeSingleSlave = dict[str, dict[str, dict[str | int]]]
-ModbusMapTypeMultipleSlaves = dict[int, ModbusMapTypeSingleSlave]
 
 
 class ModbusTcpServer:
@@ -18,7 +16,7 @@ class ModbusTcpServer:
             modbus_map: ModbusMapTypeMultipleSlaves | ModbusMapTypeSingleSlave,
             host: str = "127.0.0.1",
             port: int = 502,
-            timeout=0.5,
+            timeout: float = 0.5,
     ):
 
         if is_type(modbus_map, ModbusMapTypeSingleSlave):
@@ -33,6 +31,7 @@ class ModbusTcpServer:
         self.timeout = timeout
 
         self.context = self._get_modbus_context()
+        self.thread = threading.Thread(target=self.start_blocking, daemon=True)
 
         self._validator = ModbusMapValidator(self.modbus_map)
         self._register_type_to_function_code = {
@@ -60,17 +59,17 @@ class ModbusTcpServer:
 
     def start_non_blocking(self):
 
-        th = threading.Thread(target=self.start_blocking, daemon=True)
-        th.start()
+        self.thread.start()
 
     async def _start_async(self):
 
         self.server = _ModbusTcpServer(self.context, address=(self.host, self.port))
         await self.server.serve_forever()
 
-    def stop(self):
+    def stop(self, timeout: float = 5):
 
         asyncio.run_coroutine_threadsafe(self.server.shutdown(), self.server.loop)
+        self.thread.join(timeout=timeout)
 
     def get_mb_value_from_address(self, register_type: str, address: int, slave_id: int = 0):
 
@@ -94,3 +93,21 @@ class ModbusTcpServer:
         f_code = self._register_type_to_function_code[register_type]
         mb_value = self.context[slave_id].getValues(f_code, address, count=1)[0]
         return mb_value
+
+    def set_mb_value(
+            self,
+            mb_variable_name: str,
+            register_type: str,
+            value: int,
+            slave_id: int = 0,
+            address: int = None,
+    ):
+
+        if address is None:
+
+            self._validator.check_mb_variable_name(slave_id, register_type, mb_variable_name)
+            mb_variable = self.modbus_map[slave_id][register_type][mb_variable_name]
+            address = address or mb_variable["address"]
+
+        f_code = self._register_type_to_function_code[register_type]
+        self.context[slave_id].setValues(f_code, address, [value])

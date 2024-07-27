@@ -1,14 +1,14 @@
 from .exceptions import (
     InvalidSlaveError,
     InvalidRegisterTypeError,
-    InvalidAddressError,
     InvalidNameError,
 )
+from ._types import ModbusMapTypeSingleSlave, ModbusMapTypeMultipleSlaves
 
 
 class ModbusMapValidator:
 
-    def __init__(self, modbus_map):
+    def __init__(self, modbus_map: ModbusMapTypeMultipleSlaves | ModbusMapTypeSingleSlave):
 
         self.modbus_map = modbus_map
 
